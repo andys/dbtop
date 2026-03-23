@@ -309,15 +309,23 @@ func (a *App) renderDetail() {
 	buf.WriteString("\033[2J\033[H")
 	buf.WriteString("\033[1;37m=== Process Detail ===\033[0m\n\n")
 
-	// Write detail text, respecting terminal height
+	// Write detail text with word wrapping, respecting terminal height
 	lines := strings.Split(a.detailText, "\n")
 	maxLines := h - 3
-	for i, line := range lines {
-		if i >= maxLines {
+	linesWritten := 0
+	for _, line := range lines {
+		wrapped := wrapLine(line, w)
+		for _, wl := range wrapped {
+			if linesWritten >= maxLines {
+				break
+			}
+			buf.WriteString(wl)
+			buf.WriteString("\n")
+			linesWritten++
+		}
+		if linesWritten >= maxLines {
 			break
 		}
-		buf.WriteString(truncate(line, w))
-		buf.WriteString("\n")
 	}
 
 	buf.WriteString(fmt.Sprintf("\033[%d;1H", h))
@@ -491,6 +499,37 @@ func stripAnsi(s string) string {
 		result.WriteRune(r)
 	}
 	return result.String()
+}
+
+func wrapLine(s string, width int) []string {
+	if width <= 0 {
+		return []string{s}
+	}
+	if len(s) <= width {
+		return []string{s}
+	}
+	var lines []string
+	for len(s) > width {
+		// Try to break at a space
+		breakAt := width
+		for breakAt > 0 && s[breakAt] != ' ' && s[breakAt] != '\t' {
+			breakAt--
+		}
+		if breakAt == 0 {
+			// No space found, hard break
+			breakAt = width
+		}
+		lines = append(lines, s[:breakAt])
+		s = s[breakAt:]
+		// Skip leading space on next line
+		if len(s) > 0 && (s[0] == ' ' || s[0] == '\t') {
+			s = s[1:]
+		}
+	}
+	if len(s) > 0 {
+		lines = append(lines, s)
+	}
+	return lines
 }
 
 func compactSpaces(s string) string {
