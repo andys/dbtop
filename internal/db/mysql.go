@@ -36,6 +36,12 @@ func parseMySQLURI(uri string) (string, error) {
 	dbname := strings.TrimPrefix(u.Path, "/")
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", user, pass, host, port, dbname)
+
+	// Forward query parameters (e.g., tls=true for RDS Proxy)
+	if u.RawQuery != "" {
+		dsn += "?" + u.RawQuery
+	}
+
 	return dsn, nil
 }
 
