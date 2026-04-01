@@ -1,4 +1,4 @@
-package main
+package dbtop
 
 import (
 	"context"
@@ -15,39 +15,31 @@ import (
 	"github.com/andys/dbtop/internal/term"
 )
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: dbtop <database-uri>\n")
-		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  dbtop postgres://user:pass@host:5432/dbname\n")
-		fmt.Fprintf(os.Stderr, "  dbtop mysql://user:pass@host:3306/dbname\n")
-		os.Exit(1)
-	}
-	uri := os.Args[1]
-
+// Run starts the dbtop interactive TUI connected to the given database URI.
+// Supported URI schemes: postgres:// and mysql://
+// This function blocks until the user quits or the context is cancelled.
+// It returns an error if connection or terminal setup fails.
+func Run(uri string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Connect to database (auto-detects PostgreSQL or MySQL from URI)
 	database, err := db.NewDatabase(ctx, uri)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to connect: %w", err)
 	}
 	defer database.Close(ctx)
 
 	// Get server version info
 	version, err := database.GetVersion(ctx)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to get version: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to get version: %w", err)
 	}
 
 	// Set up terminal
 	t, err := term.New()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to init terminal: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to init terminal: %w", err)
 	}
 	defer t.Restore()
 
@@ -55,7 +47,7 @@ func main() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGWINCH)
 
-	app := &App{
+	app := &app{
 		db:          database,
 		term:        t,
 		version:     version,
@@ -76,11 +68,11 @@ func main() {
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return nil
 		case sig := <-sigCh:
 			switch sig {
 			case syscall.SIGINT, syscall.SIGTERM:
-				return
+				return nil
 			case syscall.SIGWINCH:
 				app.term.UpdateSize()
 				app.render()
@@ -94,8 +86,8 @@ func main() {
 	}
 }
 
-// App holds the application state.
-type App struct {
+// app holds the application state.
+type app struct {
 	db     db.Database
 	term   *term.Term
 	version string
@@ -112,7 +104,7 @@ type App struct {
 	prevTime    time.Time
 }
 
-func (a *App) refresh(ctx context.Context) {
+func (a *app) refresh(ctx context.Context) {
 	procs, err := a.db.GetProcesses(ctx)
 	if err != nil {
 		return
@@ -172,7 +164,7 @@ func (a *App) refresh(ctx context.Context) {
 	a.mu.Unlock()
 }
 
-func (a *App) render() {
+func (a *app) render() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -302,7 +294,7 @@ func (a *App) render() {
 	fmt.Fprint(os.Stdout, buf.String())
 }
 
-func (a *App) renderDetail() {
+func (a *app) renderDetail() {
 	w, h := a.term.Size()
 	var buf strings.Builder
 
@@ -334,7 +326,7 @@ func (a *App) renderDetail() {
 	fmt.Fprint(os.Stdout, buf.String())
 }
 
-func (a *App) inputLoop(cancel context.CancelFunc) {
+func (a *app) inputLoop(cancel context.CancelFunc) {
 	buf := make([]byte, 64)
 	for {
 		n, err := os.Stdin.Read(buf)
@@ -388,7 +380,7 @@ func (a *App) inputLoop(cancel context.CancelFunc) {
 	}
 }
 
-func (a *App) showDetail() {
+func (a *app) showDetail() {
 	a.mu.Lock()
 	if len(a.processes) == 0 || a.selectedRow >= len(a.processes) {
 		a.mu.Unlock()

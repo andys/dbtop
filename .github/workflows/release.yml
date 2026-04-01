@@ -45,7 +45,7 @@ jobs:
           go build \
             -ldflags="-s -w -X main.version=${{ github.event.inputs.version }}" \
             -o dist/dbtop_linux_amd64 \
-            .
+            ./cmd/dbtop
           strip dist/dbtop_linux_amd64
           upx -q dist/dbtop_linux_amd64
 
@@ -58,7 +58,7 @@ jobs:
           go build \
             -ldflags="-s -w -X main.version=${{ github.event.inputs.version }}" \
             -o dist/dbtop_linux_arm64 \
-            .
+            ./cmd/dbtop
           upx -q dist/dbtop_linux_arm64
 
       - name: Build Darwin ARM64
@@ -70,7 +70,7 @@ jobs:
           go build \
             -ldflags="-s -w -X main.version=${{ github.event.inputs.version }}" \
             -o dist/dbtop_darwin_arm64 \
-            .
+            ./cmd/dbtop
 
       - name: Generate checksums
         run: |

@@ -18,22 +18,14 @@ A terminal-based monitoring tool for PostgreSQL and MySQL, inspired by `top`. Wr
 | PostgreSQL | `postgres://user:pass@host:5432/dbname`        | pgx               |
 | MySQL      | `mysql://user:pass@host:3306/dbname`           | go-sql-driver/mysql |
 
-MySQL also accepts raw DSN format: `user:pass@tcp(host:3306)/dbname`
-
-### MySQL Notes
-
-- Process monitoring uses `information_schema.PROCESSLIST`
-- Database stats come from `SHOW GLOBAL STATUS` (InnoDB metrics)
-- Lock inspection requires MySQL 8.0+ (`performance_schema.data_locks`); degrades gracefully on older versions
-- `EXPLAIN` output is displayed in tabular format
 
 ## Installation
 
 ```sh
-go install github.com/andys/dbtop@latest
+go install github.com/andys/dbtop/cmd/dbtop@latest
 ```
 
-## Usage
+## CLI Usage
 
 ```sh
 # PostgreSQL
