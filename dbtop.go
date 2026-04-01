@@ -19,7 +19,7 @@ import (
 // Supported URI schemes: postgres:// and mysql://
 // This function blocks until the user quits or the context is cancelled.
 // It returns an error if connection or terminal setup fails.
-func Run(uri string) error {
+func Run(uri string, title string, identifiers map[string]string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -47,11 +47,17 @@ func Run(uri string) error {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGWINCH)
 
+	if title == "" {
+		title = "dbtop"
+	}
+
 	app := &app{
 		db:          database,
 		term:        t,
 		version:     version,
 		dbType:      database.DBType(),
+		title:       title,
+		identifiers: identifiers,
 		selectedRow: 0,
 		refreshRate: 2 * time.Second,
 	}
@@ -88,10 +94,12 @@ func Run(uri string) error {
 
 // app holds the application state.
 type app struct {
-	db     db.Database
-	term   *term.Term
-	version string
-	dbType  string
+	db          db.Database
+	term        *term.Term
+	version     string
+	dbType      string
+	title       string
+	identifiers map[string]string
 
 	mu          sync.Mutex
 	processes   []db.Process
@@ -181,7 +189,7 @@ func (a *app) render() {
 
 	// === Header lines ===
 	// Line 1: dbtop title + version
-	line1 := fmt.Sprintf("\033[1;37mdbtop\033[0m — %s %s", a.dbType, a.version)
+	line1 := fmt.Sprintf("\033[1;37m%s\033[0m — %s %s", a.title, a.dbType, a.version)
 	buf.WriteString(line1)
 	buf.WriteString("\n")
 
@@ -193,6 +201,16 @@ func (a *app) render() {
 		a.stats.ActiveConns,
 		a.stats.DatabaseName,
 	)
+	if len(a.identifiers) > 0 {
+		keys := make([]string, 0, len(a.identifiers))
+		for k := range a.identifiers {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			line2 += fmt.Sprintf("  |  %s: \033[1;35m%s\033[0m", k, a.identifiers[k])
+		}
+	}
 	buf.WriteString(line2)
 	buf.WriteString("\n")
 

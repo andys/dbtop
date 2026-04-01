@@ -18,7 +18,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := dbtop.Run(os.Args[1]); err != nil {
+	if err := dbtop.Run(os.Args[1], "", nil); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
