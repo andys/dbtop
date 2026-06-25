@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	postgresSchemeRE = regexp.MustCompile(`(?i)postgres`)
-	mysqlSchemeRE    = regexp.MustCompile(`(?i)mysql|maria`)
+	postgresSchemeRE = regexp.MustCompile(`(?i)^postgres`)
+	mysqlSchemeRE    = regexp.MustCompile(`(?i)^(mysql|maria)`)
 )
 
 // Database is the interface that both PostgreSQL and MySQL implementations satisfy.
