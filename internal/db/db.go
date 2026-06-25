@@ -3,7 +3,13 @@ package db
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
+)
+
+var (
+	postgresSchemeRE = regexp.MustCompile(`(?i)postgres`)
+	mysqlSchemeRE    = regexp.MustCompile(`(?i)mysql|maria`)
 )
 
 // Database is the interface that both PostgreSQL and MySQL implementations satisfy.
@@ -54,13 +60,14 @@ type Lock struct {
 }
 
 // NewDatabase creates the appropriate Database implementation based on the URI scheme.
-// Supports postgres://, postgresql://, and mysql:// URIs.
+// Detects PostgreSQL from any "postgres" variant (postgres://, postgresql://) and
+// MySQL/MariaDB from "mysql" or "maria" variants, matched case-insensitively.
 // Also supports raw MySQL DSN format (user:pass@tcp(host:port)/db).
 func NewDatabase(ctx context.Context, uri string) (Database, error) {
 	switch {
-	case strings.HasPrefix(uri, "postgres://"), strings.HasPrefix(uri, "postgresql://"):
+	case postgresSchemeRE.MatchString(uri):
 		return newPostgresDB(ctx, uri)
-	case strings.HasPrefix(uri, "mysql://"):
+	case mysqlSchemeRE.MatchString(uri):
 		return newMySQLDB(ctx, uri)
 	default:
 		// Try as MySQL DSN if it contains @ (common DSN pattern)
